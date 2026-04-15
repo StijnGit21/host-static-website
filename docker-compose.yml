@@ -18,27 +18,31 @@ services:
     restart: unless-stopped
     volumes:
       - site-data:/data
-      - ~/.ssh/id_ed25519:/root/.ssh/id_rsa:ro # Mounts your private key safely
+      - ~/.ssh/id_ed25519:/tmp/id_rsa_source:ro
     environment:
       - REPO_URL=${REPO_URL}
       - BRANCH=${BRANCH:-main}
       - CHECK_INTERVAL=${CHECK_INTERVAL:-60}
     entrypoint: >
-          /bin/sh -c "
-            apk add --no-cache bash openssh-client &&
-            mkdir -p /root/.ssh &&
-            ssh-keyscan github.com >> /root/.ssh/known_hosts && 
-            chmod 600 /root/.ssh/id_rsa &&
-            cd /data &&
-            # Force clean the directory to remove Nginx default files
-            rm -rf ./* ./.* 2>/dev/null || true &&
-            git clone -b $$BRANCH $$REPO_URL . &&
-            while true; do
-              echo 'Checking for updates...'
-              git pull origin $$BRANCH
-              sleep $$CHECK_INTERVAL
-            done
-          "
+      /bin/sh -c "
+        apk add --no-cache bash openssh-client &&
+        mkdir -p /root/.ssh &&
+        # 1. Copy the key to a writable location and set permissions
+        cp /tmp/id_rsa_source /root/.ssh/id_rsa &&
+        chmod 600 /root/.ssh/id_rsa &&
+        # 2. Setup known hosts
+        ssh-keyscan github.com >> /root/.ssh/known_hosts && 
+        cd /data &&
+        while true; do
+          if [ -d .git ]; then
+            git pull origin $$BRANCH
+          else
+            rm -rf ./* ./.* 2>/dev/null || true
+            git clone -b $$BRANCH $$REPO_URL .
+          fi
+          sleep $$CHECK_INTERVAL
+        done
+      "
 
   # Service 3: Cloudflare Tunnel
   tunnel:
