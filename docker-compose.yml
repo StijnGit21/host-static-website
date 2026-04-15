@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
     volumes:
       - site-data:/data
-      - ~/.ssh/id_ed25519:/tmp/id_rsa_source:ro
+      - /home/pi/.ssh/id_ed25519:/tmp/id_rsa_source:ro
     environment:
       - REPO_URL=${REPO_URL}
       - BRANCH=${BRANCH:-main}
