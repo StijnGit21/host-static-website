@@ -20,7 +20,7 @@ services:
       - site-data:/data
     environment:
       - REPO_URL=${REPO_URL}
-      - BRANCH=${BRANCH:-master}
+      - BRANCH=${BRANCH:-main}
       - CHECK_INTERVAL=${CHECK_INTERVAL:-60}
     entrypoint: >
       /bin/sh -c "
