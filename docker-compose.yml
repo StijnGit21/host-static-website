@@ -18,25 +18,31 @@ services:
     restart: unless-stopped
     volumes:
       - site-data:/data
+      - ~/.ssh/id_ed25519:/root/.ssh/id_rsa:ro # Mounts your private key safely
     environment:
       - REPO_URL=${REPO_URL}
       - BRANCH=${BRANCH:-main}
       - CHECK_INTERVAL=${CHECK_INTERVAL:-60}
     entrypoint: >
       /bin/sh -c "
-        apk add --no-cache bash &&
-        mkdir -p /data &&
+        apk add --no-cache bash openssh-client &&
+        mkdir -p /root/.ssh &&
+        chmod 700 /root/.ssh &&
+        # 1. Prevent the 'Host Authenticity' prompt
+        ssh-keyscan github.com >> /root/.ssh/known_hosts && 
+        # 2. Fix permissions (SSH rejects keys that are too 'public')
+        chmod 600 /root/.ssh/id_rsa &&
         cd /data &&
         while true; do
           if [ -d .git ]; then
             echo 'Checking for updates...'
-            git pull origin $BRANCH
+            git pull origin $$BRANCH
           else
-            echo 'Cloning repository...'
+            echo 'Cloning private repository...'
             rm -rf *
-            git clone -b $BRANCH $REPO_URL .
+            git clone -b $$BRANCH $$REPO_URL .
           fi
-          sleep $CHECK_INTERVAL
+          sleep $$CHECK_INTERVAL
         done
       "
 
